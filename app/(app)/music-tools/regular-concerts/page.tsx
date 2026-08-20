@@ -18,23 +18,14 @@ export default async function RegularConcertsPage() {
             <table className="w-full table-auto">
               <thead>
                 <tr>
+                  <th className="text-left p-2">回</th>
                   <th className="text-left p-2">日付</th>
-                  <th className="text-left p-2">回数</th>
                   <th className="text-left p-2">会場</th>
-                  <th className="text-left p-2">備考</th>
                 </tr>
               </thead>
               <tbody>
                 {concerts.map((c) => (
                   <tr key={c.id} className="border-t hover:bg-muted">
-                    <td className="p-2 align-top">
-                      <Link
-                        href={`/music-tools/regular-concerts/${c.id}`}
-                        className="block"
-                      >
-                        {formatToJapaneseEra(c.date)}
-                      </Link>
-                    </td>
                     <td className="p-2 align-top">
                       <Link
                         href={`/music-tools/regular-concerts/${c.id}`}
@@ -48,7 +39,7 @@ export default async function RegularConcertsPage() {
                         href={`/music-tools/regular-concerts/${c.id}`}
                         className="block"
                       >
-                        {c.hall}
+                        {formatToJapaneseEra(c.date)}
                       </Link>
                     </td>
                     <td className="p-2 align-top">
@@ -56,7 +47,19 @@ export default async function RegularConcertsPage() {
                         href={`/music-tools/regular-concerts/${c.id}`}
                         className="block"
                       >
-                        {c.memo ?? ""}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium leading-snug sm:text-[0.95rem]">
+                            <span className="wrap-break-word">
+                              {c.hall ?? "(無題)"}
+                            </span>
+                          </div>
+
+                          {c.memo ? (
+                            <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+                              <span className="wrap-break-word">{c.memo}</span>
+                            </div>
+                          ) : null}
+                        </div>
                       </Link>
                     </td>
                   </tr>

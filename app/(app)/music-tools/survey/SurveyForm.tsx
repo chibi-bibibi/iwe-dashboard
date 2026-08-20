@@ -109,7 +109,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 <label
                   key={p.id}
                   className={[
-                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition",
+                    "flex cursor-pointer items-start gap-3 rounded-lg p-3 transition",
                     selected
                       ? "border-primary bg-primary/5 shadow-sm"
                       : "border-border bg-card hover:bg-muted/40",

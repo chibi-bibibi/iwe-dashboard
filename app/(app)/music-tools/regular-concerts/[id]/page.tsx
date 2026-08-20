@@ -40,9 +40,6 @@ export default async function RegularConcertDetail({
                   <th className="text-left p-3 w-1/2 font-semibold text-sm">
                     曲名
                   </th>
-                  <th className="text-left p-3 w-1/4 font-semibold text-sm">
-                    編曲者
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -63,9 +60,22 @@ export default async function RegularConcertDetail({
                         <td className="p-2 align-top w-1/4">
                           {p.part !== prevPart ? partLabel : <span />}
                         </td>
-                        <td className="p-2 align-top w-1/2">{p.title ?? ""}</td>
-                        <td className="p-2 align-top w-1/4">
-                          {p.arranger ?? ""}
+                        <td className="p-2 align-top w-1/2">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium leading-snug sm:text-[0.95rem]">
+                              <span className="wrap-break-word">
+                                {p.title ?? "(無題)"}
+                              </span>
+                            </div>
+
+                            {p.arranger ? (
+                              <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+                                <span className="wrap-break-word">
+                                  {p.arranger}
+                                </span>
+                              </div>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>,
                     );

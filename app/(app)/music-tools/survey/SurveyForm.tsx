@@ -68,47 +68,77 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
       ) : null}
       {buckets.map((b) => (
         <section key={b.bucketIndex} className="rounded-md border p-3">
-          <div className="font-medium mb-2">{b.label}</div>
-          <div className="overflow-x-auto">
-            <table className="w-full table-fixed text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="w-12 py-2 px-3">選択</th>
-                  <th className="py-2 px-3">曲名</th>
-                  <th className="w-36 py-2 px-3">部</th>
-                  <th className="w-48 py-2 px-3">編曲者</th>
-                  <th className="w-48 py-2 px-3">備考</th>
-                </tr>
-              </thead>
-              <tbody>
-                {b.programs.map((p) => (
-                  <tr key={p.id} className="border-t">
-                    <td className="py-2 px-3">
-                      <input
-                        type="radio"
-                        name={`bucket-${b.bucketIndex}`}
-                        checked={selections[b.bucketIndex] === p.id}
-                        onChange={() => onSelect(b.bucketIndex, p.id)}
-                      />
-                    </td>
-                    <td className="py-2 px-3 align-top">
-                      {p.title ?? "(無題)"}
-                    </td>
-                    <td className="py-2 px-3 align-top">
-                      {p.part === "1"
+          <div className="mb-2 font-medium">{b.label}</div>
+
+          <div className="space-y-2">
+            {b.programs.map((p) => {
+              const noteText = [
+                p.arranger,
+                [
+                  p.part === "1"
+                    ? "第1部"
+                    : p.part === "2"
+                      ? "第2部"
+                      : p.part === "3"
+                        ? "第3部"
+                        : p.part,
+                  p.memo,
+                ]
+                  .filter(Boolean)
+                  .join("、")
+                  ? `(${[
+                      p.part === "1"
                         ? "第1部"
                         : p.part === "2"
                           ? "第2部"
                           : p.part === "3"
                             ? "第3部"
-                            : p.part}
-                    </td>
-                    <td className="py-2 px-3 align-top">{p.arranger ?? ""}</td>
-                    <td className="py-2 px-3 align-top">{p.memo ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            : p.part,
+                      p.memo,
+                    ]
+                      .filter(Boolean)
+                      .join("、")})`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              const selected = selections[b.bucketIndex] === p.id;
+
+              return (
+                <label
+                  key={p.id}
+                  className={[
+                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition",
+                    selected
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border bg-card hover:bg-muted/40",
+                  ].join(" ")}
+                >
+                  <input
+                    type="radio"
+                    name={`bucket-${b.bucketIndex}`}
+                    checked={selected}
+                    onChange={() => onSelect(b.bucketIndex, p.id)}
+                    className="mt-1 h-4 w-4 accent-primary"
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium leading-snug sm:text-[0.95rem]">
+                      <span className="wrap-break-word">
+                        {p.title ?? "(無題)"}
+                      </span>
+                    </div>
+
+                    {noteText ? (
+                      <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+                        <span className="wrap-break-word">{noteText}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </section>
       ))}

@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@plugin "@tailwindcss/forms";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-geist-sans), 'Geist Fallback';
+  --font-mono: var(--font-geist-mono), 'Geist Mono Fallback';
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  
+  /* Extended color mappings */
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-muted: var(--info-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --grid-template-columns-13: repeat(13, minmax(0, 1fr));
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+:root {
+  /* pfToolBox Theme - Natural Green & Kraft Brown */
+  --background: oklch(0.98 0.005 90);           /* Warm off-white */
+  --foreground: oklch(0.28 0.02 60);            /* Dark brown (logo text) */
+  --card: oklch(0.995 0.003 90);                /* Soft cream white */
+  --card-foreground: oklch(0.28 0.02 60);       /* Dark brown */
+  --popover: oklch(0.995 0.003 90);
+  --popover-foreground: oklch(0.28 0.02 60);
+  --primary: oklch(0.48 0.08 140);              /* Sage/Olive Green (logo green) */
+  --primary-foreground: oklch(0.98 0.005 90);   /* Off-white */
+  --secondary: oklch(0.78 0.06 80);             /* Kraft/Tan (box color) */
+  --secondary-foreground: oklch(0.28 0.02 60);  /* Dark brown */
+  --muted: oklch(0.94 0.01 90);                 /* Light beige */
+  --muted-foreground: oklch(0.48 0.02 60);      /* Muted brown */
+  --accent: oklch(0.85 0.05 85);                /* Light kraft/beige */
+  --accent-foreground: oklch(0.28 0.02 60);     /* Dark brown */
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.88 0.02 85);                /* Warm light border */
+  --input: oklch(0.92 0.015 85);                /* Light input background */
+  --ring: oklch(0.48 0.08 140);                 /* Sage green ring */
+  --chart-1: oklch(0.48 0.08 140);              /* Sage green */
+  --chart-2: oklch(0.78 0.06 80);               /* Kraft tan */
+  --chart-3: oklch(0.55 0.06 135);              /* Darker olive */
+  --chart-4: oklch(0.65 0.05 85);               /* Medium tan */
+  --chart-5: oklch(0.38 0.04 60);               /* Dark brown */
+  
+  /* Extended Colors - Blue (complementary) */
+  --info: oklch(0.55 0.12 230);                 /* Dusty teal-blue */
+  --info-foreground: oklch(0.98 0.005 90);
+  --info-muted: oklch(0.90 0.04 220);           /* Light dusty blue */
+  
+  /* Extended Colors - Red/Warm (complementary) */
+  --warning: oklch(0.70 0.14 55);               /* Terracotta/Rust */
+  --warning-foreground: oklch(0.20 0.02 60);
+  --warning-muted: oklch(0.88 0.06 60);         /* Light terracotta */
+  
+  --success: oklch(0.55 0.12 155);              /* Forest green */
+  --success-foreground: oklch(0.98 0.005 90);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.96 0.008 90);              /* Warm sidebar */
+  --sidebar-foreground: oklch(0.28 0.02 60);
+  --sidebar-primary: oklch(0.48 0.08 140);      /* Sage green */
+  --sidebar-primary-foreground: oklch(0.98 0.005 90);
+  --sidebar-accent: oklch(0.90 0.02 85);
+  --sidebar-accent-foreground: oklch(0.28 0.02 60);
+  --sidebar-border: oklch(0.88 0.02 85);
+  --sidebar-ring: oklch(0.48 0.08 140);
+}
+
+.dark {
+  /* pfToolBox Dark Theme */
+  --background: oklch(0.20 0.015 60);           /* Dark brown */
+  --foreground: oklch(0.94 0.01 90);            /* Light cream */
+  --card: oklch(0.25 0.02 60);                  /* Slightly lighter brown */
+  --card-foreground: oklch(0.94 0.01 90);
+  --popover: oklch(0.25 0.02 60);
+  --popover-foreground: oklch(0.94 0.01 90);
+  --primary: oklch(0.60 0.10 140);              /* Brighter sage green */
+  --primary-foreground: oklch(0.18 0.01 60);    /* Dark brown */
+  --secondary: oklch(0.35 0.03 60);             /* Muted brown */
+  --secondary-foreground: oklch(0.94 0.01 90);
+  --muted: oklch(0.30 0.02 60);
+  --muted-foreground: oklch(0.70 0.02 85);      /* Muted tan */
+  --accent: oklch(0.35 0.04 80);                /* Dark kraft accent */
+  --accent-foreground: oklch(0.94 0.01 90);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(0.35 0.02 60);
+  --input: oklch(0.32 0.02 60);
+  --ring: oklch(0.60 0.10 140);                 /* Sage green ring */
+  --chart-1: oklch(0.60 0.10 140);
+  --chart-2: oklch(0.70 0.06 80);
+  --chart-3: oklch(0.50 0.06 135);
+  --chart-4: oklch(0.55 0.04 85);
+  --chart-5: oklch(0.80 0.03 90);
+  
+  /* Extended Colors - Blue (complementary) */
+  --info: oklch(0.65 0.12 230);                 /* Brighter teal-blue */
+  --info-foreground: oklch(0.18 0.01 60);
+  --info-muted: oklch(0.35 0.06 220);           /* Dark dusty blue */
+  
+  /* Extended Colors - Red/Warm (complementary) */
+  --warning: oklch(0.75 0.14 55);               /* Brighter terracotta */
+  --warning-foreground: oklch(0.18 0.01 60);
+  --warning-muted: oklch(0.35 0.06 50);         /* Dark terracotta */
+  
+  --success: oklch(0.65 0.12 155);              /* Brighter forest green */
+  --success-foreground: oklch(0.18 0.01 60);
+  --sidebar: oklch(0.22 0.015 60);
+  --sidebar-foreground: oklch(0.94 0.01 90);
+  --sidebar-primary: oklch(0.60 0.10 140);
+  --sidebar-primary-foreground: oklch(0.18 0.01 60);
+  --sidebar-accent: oklch(0.32 0.03 60);
+  --sidebar-accent-foreground: oklch(0.94 0.01 90);
+  --sidebar-border: oklch(0.35 0.02 60);
+  --sidebar-ring: oklch(0.60 0.10 140);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

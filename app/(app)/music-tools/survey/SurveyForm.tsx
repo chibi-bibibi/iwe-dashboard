@@ -1,10 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
-  ChevronRightIcon,
-  ChevronDownIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
   CheckIcon,
@@ -131,10 +129,12 @@ function subscribeToSelections(callback: () => void) {
   };
 
   window.addEventListener("storage", handleStorage);
+
   window.addEventListener("iwe-survey-selections-change", handleCustomStorage);
 
   return () => {
     window.removeEventListener("storage", handleStorage);
+
     window.removeEventListener(
       "iwe-survey-selections-change",
       handleCustomStorage,
@@ -157,7 +157,7 @@ function saveSelectionsToStorage(selections: Record<number, string[]>) {
 
     window.dispatchEvent(new Event("iwe-survey-selections-change"));
   } catch {
-    // localStorage が使えない場合は何もしない
+    // localStorage が使用できない場合は何もしない
   }
 }
 
@@ -201,6 +201,8 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   const [search, setSearch] = useState("");
 
+  const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
+
   const [submitResult, setSubmitResult] = useState<{
     open: boolean;
     message: string;
@@ -211,65 +213,28 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
     success: false,
   });
 
-  const [openBuckets, setOpenBuckets] = useState<Record<number, boolean>>(
-    () => {
-      const result: Record<number, boolean> = {};
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-      for (const bucket of buckets) {
-        result[bucket.bucketIndex] = false;
-      }
-
-      return result;
-    },
-  );
-
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const toastSequence = useRef(0);
 
   /* =======================================================
-   * Accordion
+   * Toast
    * ===================================================== */
 
-  const toggleBucket = (bucketIndex: number) => {
-    setOpenBuckets((current) => ({
+  const showToast = (text: string) => {
+    const id = ++toastSequence.current;
+
+    setToasts((current) => [
       ...current,
-      [bucketIndex]: !current[bucketIndex],
-    }));
-  };
+      {
+        id,
+        text,
+      },
+    ]);
 
-  /* =======================================================
-   * グループジャンプ
-   * ===================================================== */
-
-  const openAndScrollTo = (bucketIndex: number) => {
-    setOpenBuckets((current) => ({
-      ...current,
-      [bucketIndex]: true,
-    }));
-
-    /*
-     * state更新後に対象位置へ移動。
-     * requestAnimationFrameを重ねない。
-     */
     window.setTimeout(() => {
-      const container = listRef.current;
-
-      if (!container) {
-        return;
-      }
-
-      const section = container.querySelector<HTMLElement>(
-        `[data-bucket-index="${bucketIndex}"]`,
-      );
-
-      if (!section) {
-        return;
-      }
-
-      container.scrollTo({
-        top: section.offsetTop,
-        behavior: "smooth",
-      });
-    }, 0);
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, 2600);
   };
 
   /* =======================================================
@@ -277,12 +242,16 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
    * ===================================================== */
 
   const onToggleSelect = (bucketIndex: number, programId: string) => {
+    const current = selections[bucketIndex] ?? [];
+
+    if (!current.includes(programId) && current.length >= MAX_SELECT) {
+      showToast(`各グループは最大${MAX_SELECT}曲まで選べます`);
+
+      return;
+    }
+
     setSelections((state) => {
       const selected = state[bucketIndex] ?? [];
-
-      if (!selected.includes(programId) && selected.length >= MAX_SELECT) {
-        return state;
-      }
 
       const next = selected.includes(programId)
         ? selected.filter((id) => id !== programId)
@@ -301,6 +270,8 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   const clearAll = () => {
     setSelections({});
+
+    showToast("すべての選択をクリアしました");
   };
 
   /* =======================================================
@@ -310,12 +281,26 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (isSubmitting) {
+      return;
+    }
+
     const incompleteBuckets = buckets.filter(
       (bucket) => (selections[bucket.bucketIndex] ?? []).length !== MAX_SELECT,
     );
 
     if (incompleteBuckets.length > 0) {
-      openAndScrollTo(incompleteBuckets[0].bucketIndex);
+      const labels = incompleteBuckets
+        .map((bucket) => bucket.label)
+        .slice(0, 3)
+        .join("、");
+
+      showToast(
+        `3曲すべて選択していないグループがあります（${labels}${
+          incompleteBuckets.length > 3 ? " ほか" : ""
+        }）`,
+      );
+
       return;
     }
 
@@ -324,6 +309,8 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
       .filter((id): id is string => typeof id === "string" && id.length > 0);
 
     try {
+      setIsSubmitting(true);
+
       const result = await submitSurvey(programIds);
 
       console.log("result:", result);
@@ -345,6 +332,8 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
         message: "回答の保存に失敗しました。",
         success: false,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -380,6 +369,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
     return buckets.map((bucket) => ({
       ...bucket,
+
       programs: bucket.programs.filter((program) =>
         [program.title, program.arranger, program.memo, program.concert_date]
           .filter(Boolean)
@@ -395,423 +385,385 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
    * ===================================================== */
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="
-        flex
-        h-full
-        min-h-0
-        w-full
-        flex-col
-        overflow-hidden
-      "
-    >
-      {/* ==================================================
-          操作エリア
-         ================================================== */}
+    <>
+      <form onSubmit={onSubmit} className="w-full">
+        {/* ==================================================
+            操作エリア
+           ================================================== */}
 
-      <div
-        className="
-          shrink-0
-          bg-background
-          px-2
-          pb-2
-        "
-      >
-        <p className="mb-2 text-xs text-muted-foreground">
-          各グループから{MAX_SELECT}曲選んでください。
-        </p>
-
-        <div
-          className="
-            space-y-2
-            rounded-lg
-            border
-            bg-background
-            p-2.5
-            shadow-sm
-          "
-        >
-          {/* 選択状況 */}
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs sm:text-sm">
-              選択済み{" "}
-              <span className="font-semibold text-primary">
-                {completedBuckets}
-              </span>{" "}
-              / {buckets.length} グループ
-              <span className="mx-1 text-muted-foreground">・</span>
-              <span className="font-semibold text-primary">
-                {totalSelected}
-              </span>
-              曲
-            </div>
-
-            {totalSelected > 0 && (
-              <button
-                type="button"
-                onClick={clearAll}
-                className="
-                  shrink-0
-                  text-xs
-                  text-muted-foreground
-                  underline
-                  decoration-dotted
-                  hover:text-foreground
-                "
-              >
-                全てクリア
-              </button>
-            )}
-          </div>
-
-          {/* 進捗バー */}
+        <div className="bg-background px-2 pb-3">
+          <p className="mb-2 text-xs text-muted-foreground">
+            各グループから{MAX_SELECT}曲選んでください。
+          </p>
 
           <div
             className="
-              h-1.5
-              w-full
-              overflow-hidden
-              rounded-full
-              bg-muted
+              space-y-2
+              rounded-lg
+              border
+              bg-background
+              p-2.5
+              shadow-sm
             "
           >
+            {/* 選択状況 */}
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs sm:text-sm">
+                選択済み{" "}
+                <span className="font-semibold text-primary">
+                  {completedBuckets}
+                </span>{" "}
+                / {buckets.length} グループ
+                <span className="mx-1 text-muted-foreground">・</span>
+                <span className="font-semibold text-primary">
+                  {totalSelected}
+                </span>
+                曲
+              </div>
+
+              {totalSelected > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="
+                    shrink-0
+                    text-xs
+                    text-muted-foreground
+                    underline
+                    decoration-dotted
+                    hover:text-foreground
+                  "
+                >
+                  全てクリア
+                </button>
+              )}
+            </div>
+
+            {/* 進捗バー */}
+
             <div
               className="
-                h-full
-                bg-primary
-                transition-all
-                duration-300
-              "
-              style={{
-                width: `${
-                  buckets.length > 0
-                    ? (completedBuckets / buckets.length) * 100
-                    : 0
-                }%`,
-              }}
-            />
-          </div>
-
-          {/* 検索 */}
-
-          <div className="relative">
-            <MagnifyingGlassIcon
-              className="
-                pointer-events-none
-                absolute
-                left-2.5
-                top-1/2
-                h-4
-                w-4
-                -translate-y-1/2
-                text-muted-foreground
-              "
-            />
-
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="曲名・編曲者・メモで検索"
-              className="
+                h-1.5
                 w-full
-                rounded-md
-                border
-                bg-card
-                py-2
-                pl-8
-                pr-8
-                text-sm
-                outline-none
-                focus:ring-2
-                focus:ring-primary/40
+                overflow-hidden
+                rounded-full
+                bg-muted
               "
-            />
-
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
+            >
+              <div
                 className="
+                  h-full
+                  bg-primary
+                  transition-all
+                  duration-300
+                "
+                style={{
+                  width: `${
+                    buckets.length > 0
+                      ? (completedBuckets / buckets.length) * 100
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+
+            {/* 検索 */}
+
+            <div className="relative">
+              <MagnifyingGlassIcon
+                className="
+                  pointer-events-none
                   absolute
-                  right-2
+                  left-2.5
                   top-1/2
+                  h-4
+                  w-4
                   -translate-y-1/2
                   text-muted-foreground
                 "
-                aria-label="検索をクリア"
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+              />
 
-          {/* グループジャンプ */}
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="曲名・編曲で検索"
+                className="
+                  w-full
+                  rounded-md
+                  border
+                  bg-card
+                  py-2
+                  pl-8
+                  pr-8
+                  text-sm
+                  outline-none
+                  focus:ring-2
+                  focus:ring-primary/40
+                "
+              />
 
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>グループへ移動</span>
-              <ChevronDownIcon className="h-3.5 w-3.5" />
-            </div>
-
-            <div
-              className="
-                flex
-                gap-1.5
-                overflow-x-auto
-                pb-0.5
-              "
-            >
-              {buckets.map((bucket, index) => {
-                const selectedCount =
-                  selections[bucket.bucketIndex]?.length ?? 0;
-
-                return (
-                  <button
-                    key={bucket.bucketIndex}
-                    type="button"
-                    onClick={() => openAndScrollTo(bucket.bucketIndex)}
-                    title={`${bucket.label}へ移動`}
-                    aria-label={`${bucket.label}へ移動`}
-                    className={[
-                      "flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full",
-                      "text-xs font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                      selectedCount === MAX_SELECT
-                        ? "bg-primary text-primary-foreground"
-                        : selectedCount > 0
-                          ? "bg-primary/10 text-primary hover:bg-primary/20"
-                          : "bg-muted text-muted-foreground hover:bg-muted/70",
-                    ].join(" ")}
-                  >
-                    {selectedCount === MAX_SELECT ? (
-                      <CheckIcon className="h-3.5 w-3.5" />
-                    ) : (
-                      index + 1
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ==================================================
-          アコーディオン領域
-         ================================================== */}
-
-      <div
-        ref={listRef}
-        className="
-          min-h-0
-          flex-1
-          overflow-y-auto
-          overscroll-contain
-          px-2
-          pb-2
-        "
-      >
-        <div
-          className="
-            overflow-hidden
-            rounded-lg
-            border
-            bg-background
-          "
-        >
-          {filteredBuckets.map((bucket) => {
-            const selected = selections[bucket.bucketIndex] ?? [];
-
-            const open = !!openBuckets[bucket.bucketIndex];
-
-            const selectedPrograms = bucket.programs.filter((program) =>
-              selected.includes(program.id),
-            );
-
-            return (
-              <section
-                key={bucket.bucketIndex}
-                data-bucket-index={bucket.bucketIndex}
-                className="bg-background"
-              >
-                {/* アコーディオンヘッダー */}
-
+              {search && (
                 <button
                   type="button"
-                  onClick={() => toggleBucket(bucket.bucketIndex)}
-                  className={[
-                    "flex w-full flex-col gap-1.5",
-                    "bg-background px-3 py-2.5 text-left",
-                    "transition-colors hover:bg-muted/30",
-                    bucket.bucketIndex > 0 ? "border-t" : "",
-                  ].join(" ")}
-                  aria-expanded={open}
+                  onClick={() => setSearch("")}
+                  className="
+                    absolute
+                    right-2
+                    top-1/2
+                    -translate-y-1/2
+                    text-muted-foreground
+                  "
+                  aria-label="検索をクリア"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {open ? (
-                        <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      ) : (
-                        <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      )}
-
-                      {selected.length === MAX_SELECT && (
-                        <CheckIcon className="h-4 w-4 shrink-0 text-primary" />
-                      )}
-
-                      <span className="truncate text-sm font-semibold">
-                        {bucket.label}
-                      </span>
-
-                      <span className="shrink-0 text-xs font-normal text-muted-foreground">
-                        {bucket.programs.length}曲
-                      </span>
-                    </div>
-
-                    <span className="shrink-0 text-xs font-normal text-muted-foreground">
-                      {selected.length}/{MAX_SELECT}
-                    </span>
-                  </div>
-
-                  {!open && selectedPrograms.length > 0 && (
-                    <div className="ml-6 flex flex-wrap gap-1">
-                      {selectedPrograms.map((program, index) => (
-                        <span
-                          key={program.id}
-                          className="
-                                max-w-full
-                                truncate
-                                rounded-full
-                                bg-primary/10
-                                px-2
-                                py-0.5
-                                text-[11px]
-                                text-primary
-                              "
-                        >
-                          {index + 1}. {program.title ?? "(無題)"}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <XMarkIcon className="h-4 w-4" />
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
 
-                {/* 曲一覧 */}
+        {/* ==================================================
+            全グループ
+            アコーディオンなし
+            内部スクロールなし
+           ================================================== */}
 
-                {open && (
+        <div className="px-2 pb-2">
+          <div
+            className="
+              rounded-lg
+              border
+              bg-background
+            "
+          >
+            {filteredBuckets.map((bucket) => {
+              const selected = selections[bucket.bucketIndex] ?? [];
+
+              return (
+                <section key={bucket.bucketIndex} className="bg-background">
+                  {/* グループヘッダー */}
+
                   <div
                     className="
-                      border-t
-                      px-2.5
-                      pb-2.5
-                      pt-2
+                      border-b
+                      bg-background
+                      px-3
+                      py-2.5
                     "
                   >
-                    <div className="space-y-1.5">
-                      {bucket.programs.map((program) => {
-                        const isSelected = selected.includes(program.id);
-
-                        const order = selected.indexOf(program.id) + 1;
-
-                        const disabled =
-                          selected.length >= MAX_SELECT && !isSelected;
-
-                        const detail = [
-                          program.arranger,
-                          partLabel(program.part),
-                          program.memo,
-                        ]
-                          .filter(Boolean)
-                          .join(" ・ ");
-
-                        return (
-                          <label
-                            key={program.id}
-                            className={[
-                              "flex cursor-pointer items-start gap-2.5 rounded-md border px-2.5 py-2",
-                              isSelected
-                                ? "border-primary bg-primary/5"
-                                : "border-border bg-card hover:bg-muted/40",
-                              disabled ? "cursor-not-allowed opacity-45" : "",
-                            ].join(" ")}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              disabled={disabled}
-                              onChange={() =>
-                                onToggleSelect(bucket.bucketIndex, program.id)
-                              }
-                              className="sr-only"
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          {selected.length === MAX_SELECT && (
+                            <CheckIcon
+                              className="
+                                h-4
+                                w-4
+                                shrink-0
+                                text-primary
+                              "
                             />
+                          )}
 
-                            <span
-                              className={[
-                                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
-                                isSelected
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-border",
-                              ].join(" ")}
-                            >
-                              {isSelected ? order : ""}
-                            </span>
+                          <span className="truncate text-sm font-semibold">
+                            {bucket.label}
+                          </span>
 
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-medium leading-snug">
-                                {program.title ?? "(無題)"}
-                              </div>
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            {bucket.programs.length}曲
+                          </span>
+                        </div>
+                      </div>
 
-                              {detail && (
-                                <div className="mt-0.5 break-words text-[11px] leading-relaxed text-muted-foreground">
-                                  {detail}
-                                </div>
-                              )}
-                            </div>
-                          </label>
-                        );
-                      })}
+                      <span
+                        className={[
+                          "shrink-0 text-xs font-semibold",
+                          selected.length === MAX_SELECT
+                            ? "text-primary"
+                            : "text-muted-foreground",
+                        ].join(" ")}
+                      >
+                        {selected.length}/{MAX_SELECT}
+                      </span>
                     </div>
                   </div>
-                )}
-              </section>
-            );
-          })}
+
+                  {/* 曲一覧 */}
+
+                  <div className="px-2.5 py-2.5">
+                    <div className="space-y-1.5">
+                      {bucket.programs.length === 0 ? (
+                        <p className="px-2 py-3 text-xs text-muted-foreground">
+                          検索条件に一致する曲がありません。
+                        </p>
+                      ) : (
+                        bucket.programs.map((program) => {
+                          const isSelected = selected.includes(program.id);
+
+                          const order = selected.indexOf(program.id) + 1;
+
+                          const disabled =
+                            selected.length >= MAX_SELECT && !isSelected;
+
+                          const detail = [
+                            program.arranger,
+                            partLabel(program.part),
+                            program.memo,
+                          ]
+                            .filter(Boolean)
+                            .join(" ・ ");
+
+                          return (
+                            <label
+                              key={program.id}
+                              className={[
+                                "flex items-start gap-2.5",
+                                "rounded-md border px-2.5 py-2",
+                                "transition-colors",
+
+                                isSelected
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border bg-card hover:bg-muted/40",
+
+                                disabled
+                                  ? "cursor-not-allowed opacity-45"
+                                  : "cursor-pointer",
+                              ].join(" ")}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={disabled}
+                                onChange={() =>
+                                  onToggleSelect(bucket.bucketIndex, program.id)
+                                }
+                                className="sr-only"
+                              />
+
+                              {/* 選択番号 */}
+
+                              <span
+                                className={[
+                                  "mt-0.5 flex h-5 w-5 shrink-0",
+                                  "items-center justify-center",
+                                  "rounded-full border",
+                                  "text-[10px] font-semibold",
+
+                                  isSelected
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border",
+                                ].join(" ")}
+                              >
+                                {isSelected ? order : ""}
+                              </span>
+
+                              {/* 曲情報 */}
+
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium leading-snug">
+                                  {program.title ?? "(無題)"}
+                                </div>
+
+                                {detail && (
+                                  <div
+                                    className="
+                                      mt-0.5
+                                      break-words
+                                      text-[11px]
+                                      leading-relaxed
+                                      text-muted-foreground
+                                    "
+                                  >
+                                    {detail}
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
-      </div>
+
+        {/* ==================================================
+            送信ボタン
+           ================================================== */}
+
+        <div
+          className="
+            bg-background
+            px-2
+            pb-[max(1.5rem,env(safe-area-inset-bottom))]
+            pt-1
+          "
+        >
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={[
+              "w-full rounded-lg px-5 py-2.5",
+              "text-sm font-semibold",
+              "transition-colors",
+              "shadow-sm",
+
+              isSubmitting
+                ? "cursor-not-allowed bg-muted text-muted-foreground"
+                : allComplete
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-primary/60 text-primary-foreground",
+            ].join(" ")}
+          >
+            {isSubmitting ? "送信中..." : `送信（${totalSelected}曲）`}
+          </button>
+        </div>
+      </form>
 
       {/* ==================================================
-          送信ボタン
+          Toast
          ================================================== */}
 
-      <div
-        className="
-          shrink-0
-          bg-background
-          px-2
-          pb-[max(5rem,env(safe-area-inset-bottom))]
-          pt-1
-        "
-      >
-        <button
-          type="submit"
-          className={[
-            "w-full rounded-lg px-5 py-2.5",
-            "text-sm font-semibold",
-            "transition-colors shadow-sm",
-            allComplete
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "bg-primary/60 text-primary-foreground",
-          ].join(" ")}
+      {toasts.length > 0 && (
+        <div
+          className="
+            fixed
+            bottom-4
+            left-1/2
+            z-[110]
+            w-[calc(100%-2rem)]
+            max-w-sm
+            -translate-x-1/2
+            space-y-2
+          "
         >
-          送信（{totalSelected}曲）
-        </button>
-      </div>
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className="
+                rounded-lg
+                bg-foreground
+                px-4
+                py-3
+                text-center
+                text-sm
+                text-background
+                shadow-lg
+              "
+            >
+              {toast.text}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ==================================================
-          送信結果モーダル
+          Submit Result Modal
          ================================================== */}
 
       {submitResult.open && (
@@ -840,9 +792,14 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             "
           >
             <div className="text-center">
+              {/* アイコン */}
+
               <div
                 className={[
-                  "mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full",
+                  "mx-auto mb-3 flex h-12 w-12",
+                  "items-center justify-center",
+                  "rounded-full",
+
                   submitResult.success
                     ? "bg-primary/10 text-primary"
                     : "bg-destructive/10 text-destructive",
@@ -855,13 +812,19 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 )}
               </div>
 
+              {/* タイトル */}
+
               <h2 className="text-base font-semibold">
                 {submitResult.success ? "送信完了" : "送信エラー"}
               </h2>
 
+              {/* メッセージ */}
+
               <p className="mt-2 text-sm text-muted-foreground">
                 {submitResult.message}
               </p>
+
+              {/* ホームへ戻る */}
 
               <button
                 type="button"
@@ -893,6 +856,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
           </div>
         </div>
       )}
-    </form>
+    </>
   );
 }

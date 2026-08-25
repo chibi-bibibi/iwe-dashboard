@@ -41,14 +41,14 @@ export default async function SurveyPage() {
     });
 
   return (
-    <main className="flex h-dvh min-h-0 flex-col overflow-hidden">
+    <main className="flex h-dvh min-h-0 flex-col">
       {/* ヘッダー */}
       <div className="shrink-0">
         <PageHeader title="第40回定期演奏会向けアンケート" />
       </div>
 
       {/* アンケート */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1">
         <SurveyForm buckets={buckets} />
       </div>
     </main>

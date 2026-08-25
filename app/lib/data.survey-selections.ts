@@ -6,18 +6,18 @@ const sql = postgres(process.env.POSTGRES_URL!, {
   ssl: "require",
 });
 
-export async function submitSurvey(programIds: string[]): Promise<{
+async function createSurveySelection(programIds: string[]): Promise<{
   success: boolean;
   message: string;
 }> {
-  if (programIds.length === 0) {
-    return {
-      success: false,
-      message: "登録するデータがありません。",
-    };
-  }
-
   try {
+    if (programIds.length === 0) {
+      return {
+        success: false,
+        message: "登録するデータがありません。",
+      };
+    }
+
     const now = new Date().toISOString();
 
     await sql`
@@ -34,11 +34,15 @@ export async function submitSurvey(programIds: string[]): Promise<{
       message: "登録に成功しました。",
     };
   } catch (error) {
-    console.error("survey_selections INSERT error:", error);
+    console.error(error);
 
     return {
       success: false,
       message: "登録に失敗しました。",
     };
   }
+}
+
+export async function submitSurvey(programIds: string[]) {
+  return createSurveySelection(programIds);
 }

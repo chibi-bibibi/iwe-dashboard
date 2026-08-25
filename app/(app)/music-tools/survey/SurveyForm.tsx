@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   ChevronRightIcon,
@@ -9,8 +9,9 @@ import {
   XMarkIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
+
 import { submitSurvey } from "@/app/lib/data.survey-selections";
-import router from "next/router";
+import { useRouter } from "next/navigation";
 
 type Program = {
   id: string;
@@ -194,11 +195,11 @@ function useSelections(): [
  * ======================================================= */
 
 export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
+  const router = useRouter();
+
   const [selections, setSelections] = useSelections();
 
   const [search, setSearch] = useState("");
-
-  const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
 
   const [submitResult, setSubmitResult] = useState<{
     open: boolean;
@@ -210,10 +211,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
     success: false,
   });
 
-  /*
-   * 初期状態はすべて閉じる。
-   * 100曲程度あっても画面を圧迫しない。
-   */
   const [openBuckets, setOpenBuckets] = useState<Record<number, boolean>>(
     () => {
       const result: Record<number, boolean> = {};
@@ -228,54 +225,15 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const sectionRefs = useRef<Record<number, HTMLElement | null>>({});
-
-  const toastSequence = useRef(0);
-
   /* =======================================================
-   * Toast
+   * Accordion
    * ===================================================== */
 
-  const showToast = (text: string) => {
-    const id = ++toastSequence.current;
-
-    setToasts((current) => [
+  const toggleBucket = (bucketIndex: number) => {
+    setOpenBuckets((current) => ({
       ...current,
-      {
-        id,
-        text,
-      },
-    ]);
-
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((item) => item.id !== id));
-    }, 2600);
-  };
-
-  /* =======================================================
-   * スクロール制御
-   *
-   * アコーディオン領域の端でスクロールしても、
-   * ページ本体へスクロールを逃がさない。
-   * ===================================================== */
-
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    const container = listRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const maxScroll = container.scrollHeight - container.clientHeight;
-
-    const atTop = container.scrollTop <= 0;
-    const atBottom = container.scrollTop >= maxScroll - 1;
-
-    if ((atTop && event.deltaY < 0) || (atBottom && event.deltaY > 0)) {
-      event.preventDefault();
-    }
-
-    event.stopPropagation();
+      [bucketIndex]: !current[bucketIndex],
+    }));
   };
 
   /* =======================================================
@@ -289,42 +247,29 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
     }));
 
     /*
-     * Reactがアコーディオンを開いた後に
-     * スクロール位置を計算する。
+     * state更新後に対象位置へ移動。
+     * requestAnimationFrameを重ねない。
      */
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const container = listRef.current;
-        const section = sectionRefs.current[bucketIndex];
+    window.setTimeout(() => {
+      const container = listRef.current;
 
-        if (!container || !section) {
-          return;
-        }
+      if (!container) {
+        return;
+      }
 
-        const containerRect = container.getBoundingClientRect();
+      const section = container.querySelector<HTMLElement>(
+        `[data-bucket-index="${bucketIndex}"]`,
+      );
 
-        const sectionRect = section.getBoundingClientRect();
+      if (!section) {
+        return;
+      }
 
-        const target =
-          sectionRect.top - containerRect.top + container.scrollTop;
-
-        container.scrollTo({
-          top: Math.max(0, target),
-          behavior: "smooth",
-        });
+      container.scrollTo({
+        top: section.offsetTop,
+        behavior: "smooth",
       });
-    });
-  };
-
-  /* =======================================================
-   * Accordion
-   * ===================================================== */
-
-  const toggleBucket = (bucketIndex: number) => {
-    setOpenBuckets((current) => ({
-      ...current,
-      [bucketIndex]: !current[bucketIndex],
-    }));
+    }, 0);
   };
 
   /* =======================================================
@@ -332,15 +277,12 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
    * ===================================================== */
 
   const onToggleSelect = (bucketIndex: number, programId: string) => {
-    const current = selections[bucketIndex] ?? [];
-
-    if (!current.includes(programId) && current.length >= MAX_SELECT) {
-      showToast(`各グループは最大${MAX_SELECT}曲まで選べます`);
-      return;
-    }
-
     setSelections((state) => {
       const selected = state[bucketIndex] ?? [];
+
+      if (!selected.includes(programId) && selected.length >= MAX_SELECT) {
+        return state;
+      }
 
       const next = selected.includes(programId)
         ? selected.filter((id) => id !== programId)
@@ -359,7 +301,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   const clearAll = () => {
     setSelections({});
-    showToast("すべての選択をクリアしました");
   };
 
   /* =======================================================
@@ -374,21 +315,14 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
     );
 
     if (incompleteBuckets.length > 0) {
-      showToast(
-        `3曲すべて選択していないグループが${incompleteBuckets.length}件あります（${incompleteBuckets
-          .map((bucket) => bucket.label)
-          .slice(0, 3)
-          .join("、")}${incompleteBuckets.length > 3 ? " ほか" : ""}）`,
-      );
-
       openAndScrollTo(incompleteBuckets[0].bucketIndex);
-
       return;
     }
 
     const programIds = Object.values(selections)
       .flat()
       .filter((id): id is string => typeof id === "string" && id.length > 0);
+
     try {
       const result = await submitSurvey(programIds);
 
@@ -413,6 +347,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
       });
     }
   };
+
   /* =======================================================
    * 集計
    * ===================================================== */
@@ -473,7 +408,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
     >
       {/* ==================================================
           操作エリア
-          固定
          ================================================== */}
 
       <div
@@ -645,7 +579,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                       "flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full",
                       "text-xs font-medium transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-
                       selectedCount === MAX_SELECT
                         ? "bg-primary text-primary-foreground"
                         : selectedCount > 0
@@ -668,12 +601,10 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
       {/* ==================================================
           アコーディオン領域
-          ★★★ ここだけスクロール ★★★
          ================================================== */}
 
       <div
         ref={listRef}
-        onWheel={handleWheel}
         className="
           min-h-0
           flex-1
@@ -703,23 +634,15 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             return (
               <section
                 key={bucket.bucketIndex}
-                ref={(element) => {
-                  sectionRefs.current[bucket.bucketIndex] = element;
-                }}
-                className="
-                    overflow-hidden
-                    bg-background
-                  "
+                data-bucket-index={bucket.bucketIndex}
+                className="bg-background"
               >
-                {/* ==================================================
-                      アコーディオンヘッダー
-                     ================================================== */}
+                {/* アコーディオンヘッダー */}
 
                 <button
                   type="button"
                   onClick={() => toggleBucket(bucket.bucketIndex)}
                   className={[
-                    open ? "sticky top-0 z-20" : "",
                     "flex w-full flex-col gap-1.5",
                     "bg-background px-3 py-2.5 text-left",
                     "transition-colors hover:bg-muted/30",
@@ -730,34 +653,13 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
                       {open ? (
-                        <ChevronDownIcon
-                          className="
-                              h-4
-                              w-4
-                              shrink-0
-                              text-muted-foreground
-                            "
-                        />
+                        <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                       ) : (
-                        <ChevronRightIcon
-                          className="
-                              h-4
-                              w-4
-                              shrink-0
-                              text-muted-foreground
-                            "
-                        />
+                        <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                       )}
 
                       {selected.length === MAX_SELECT && (
-                        <CheckIcon
-                          className="
-                              h-4
-                              w-4
-                              shrink-0
-                              text-primary
-                            "
-                        />
+                        <CheckIcon className="h-4 w-4 shrink-0 text-primary" />
                       )}
 
                       <span className="truncate text-sm font-semibold">
@@ -769,18 +671,10 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                       </span>
                     </div>
 
-                    {/* 選択数 */}
-
-                    <span
-                      className={[
-                        "shrink-0 text-xs font-normal text-muted-foreground",
-                      ].join(" ")}
-                    >
+                    <span className="shrink-0 text-xs font-normal text-muted-foreground">
                       {selected.length}/{MAX_SELECT}
                     </span>
                   </div>
-
-                  {/* 閉じているときは選択曲を表示 */}
 
                   {!open && selectedPrograms.length > 0 && (
                     <div className="ml-6 flex flex-wrap gap-1">
@@ -788,15 +682,15 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                         <span
                           key={program.id}
                           className="
-                                  max-w-full
-                                  truncate
-                                  rounded-full
-                                  bg-primary/10
-                                  px-2
-                                  py-0.5
-                                  text-[11px]
-                                  text-primary
-                                "
+                                max-w-full
+                                truncate
+                                rounded-full
+                                bg-primary/10
+                                px-2
+                                py-0.5
+                                text-[11px]
+                                text-primary
+                              "
                         >
                           {index + 1}. {program.title ?? "(無題)"}
                         </span>
@@ -805,18 +699,16 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   )}
                 </button>
 
-                {/* ==================================================
-                      曲一覧
-                     ================================================== */}
+                {/* 曲一覧 */}
 
                 {open && (
                   <div
                     className="
-                        border-t
-                        px-2.5
-                        pb-2.5
-                        pt-2
-                      "
+                      border-t
+                      px-2.5
+                      pb-2.5
+                      pt-2
+                    "
                   >
                     <div className="space-y-1.5">
                       {bucket.programs.map((program) => {
@@ -856,8 +748,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                               className="sr-only"
                             />
 
-                            {/* 選択番号 */}
-
                             <span
                               className={[
                                 "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
@@ -868,8 +758,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                             >
                               {isSelected ? order : ""}
                             </span>
-
-                            {/* 曲情報 */}
 
                             <div className="min-w-0 flex-1">
                               <div className="text-sm font-medium leading-snug">
@@ -896,25 +784,23 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
       {/* ==================================================
           送信ボタン
-          ★ 固定
          ================================================== */}
 
       <div
         className="
-    shrink-0
-    bg-background
-    px-2
-    pb-[max(5rem,env(safe-area-inset-bottom))]
-    pt-1
-  "
+          shrink-0
+          bg-background
+          px-2
+          pb-[max(5rem,env(safe-area-inset-bottom))]
+          pt-1
+        "
       >
         <button
           type="submit"
           className={[
             "w-full rounded-lg px-5 py-2.5",
             "text-sm font-semibold",
-            "transition-colors",
-            "shadow-sm",
+            "transition-colors shadow-sm",
             allComplete
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-primary/60 text-primary-foreground",
@@ -925,37 +811,33 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
       </div>
 
       {/* ==================================================
-          Toast
+          送信結果モーダル
          ================================================== */}
-
-      {/* ==================================================
-    Submit Result Modal
-   ================================================== */}
 
       {submitResult.open && (
         <div
           className="
-      fixed
-      inset-0
-      z-[100]
-      flex
-      items-center
-      justify-center
-      bg-black/40
-      px-4
-    "
+            fixed
+            inset-0
+            z-[100]
+            flex
+            items-center
+            justify-center
+            bg-black/40
+            px-4
+          "
           role="dialog"
           aria-modal="true"
         >
           <div
             className="
-        w-full
-        max-w-sm
-        rounded-xl
-        bg-background
-        p-5
-        shadow-xl
-      "
+              w-full
+              max-w-sm
+              rounded-xl
+              bg-background
+              p-5
+              shadow-xl
+            "
           >
             <div className="text-center">
               <div
@@ -993,17 +875,17 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   router.push("/");
                 }}
                 className="
-    mt-5
-    w-full
-    rounded-lg
-    bg-primary
-    px-4
-    py-2.5
-    text-sm
-    font-semibold
-    text-primary-foreground
-    hover:bg-primary/90
-  "
+                  mt-5
+                  w-full
+                  rounded-lg
+                  bg-primary
+                  px-4
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-primary-foreground
+                  hover:bg-primary/90
+                "
               >
                 ホームへ戻る
               </button>

@@ -354,7 +354,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   /* =======================================================
    * 集計
-   * ======================================================= */
+   * ===================================================== */
 
   const totalSelected = useMemo(() => {
     return Object.values(selections).reduce(
@@ -373,7 +373,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   /* =======================================================
    * 検索
-   * ======================================================= */
+   * ===================================================== */
 
   const filteredBuckets = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -397,7 +397,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   /* =======================================================
    * Render
-   * ======================================================= */
+   * ===================================================== */
 
   return (
     <>
@@ -423,7 +423,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
           <div className="mx-auto w-full max-w-3xl">
             {/* タイトル */}
 
-            <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="mb-4 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-semibold">
                   各グループから{MAX_SELECT}曲選択してください。
@@ -433,7 +433,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
             {/* 回数範囲 */}
 
-            <div className="mt-2 grid grid-cols-5 gap-1.5 relative">
+            <div className="relative mt-2 grid grid-cols-5 gap-1.5">
               {filteredBuckets.map((group) => {
                 const selected = selections[group.bucketIndex] ?? [];
                 const isCompleted = selected.length === MAX_SELECT;
@@ -448,10 +448,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                       "gap-1 rounded-md px-1 py-1.5",
                       "text-[10px] font-semibold",
                       "transition-colors",
-
-                      //   isCompleted
-                      //     ? "border-primary bg-primary text-primary-foreground"
-                      //     : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60",
                     ].join(" ")}
                   >
                     {isCompleted && (
@@ -483,7 +479,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
             {/* 選択数 + 検索 */}
 
-            <div className="mt-2 flex items-center gap-2 grid-cols-5">
+            <div className="mt-2 flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
                 <MagnifyingGlassIcon
                   className="
@@ -509,10 +505,11 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                     rounded-md
                     border
                     bg-card
-                    py-1.5
+                    py-2
                     pl-8
                     pr-7
-                    text-xs
+                    text-base
+                    leading-normal
                     outline-none
                     focus:ring-2
                     focus:ring-primary/40
@@ -543,13 +540,13 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 type="button"
                 onClick={clearAll}
                 className="
-                    shrink-0
-                    text-[10px]
-                    text-muted-foreground
-                    underline
-                    decoration-dotted
-                    underline-offset-2
-                  "
+                  shrink-0
+                  text-[10px]
+                  text-muted-foreground
+                  underline
+                  decoration-dotted
+                  underline-offset-2
+                "
                 disabled={totalSelected === 0}
               >
                 選択をリセット
@@ -594,12 +591,12 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-baseline gap-2">
                         <h3 className="truncate text-sm font-semibold">
                           {bucket.label}
                         </h3>
 
-                        <p className="mt-1 text-[11px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground">
                           対象：{bucket.programs.length}曲
                         </p>
                       </div>
@@ -695,11 +692,11 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                               {isSelected ? (
                                 <CheckIcon
                                   className="
-                                  mt-0.5
-                                  h-3
-                                  w-3
-                                  shrink-0
-                                "
+                                    mt-0.5
+                                    h-3
+                                    w-3
+                                    shrink-0
+                                  "
                                 />
                               ) : (
                                 ""
@@ -758,7 +755,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
               value={freeText}
               onChange={(event) => setFreeText(event.target.value)}
               placeholder=""
-              rows={3}
+              rows={2}
               maxLength={FREE_TEXT_MAX_LENGTH}
               className="
                 mt-3
@@ -769,7 +766,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 bg-card
                 px-3
                 py-2.5
-                text-sm
+                text-base
                 leading-relaxed
                 outline-none
                 placeholder:text-muted-foreground

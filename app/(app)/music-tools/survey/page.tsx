@@ -9,7 +9,8 @@ export default async function SurveyPage() {
 
   for (const p of programs) {
     const c = p.concert_count ?? 0;
-    const idx = Math.max(0, Math.floor(((c || 0) - 1) / 10));
+
+    const idx = Math.max(0, Math.floor((c - 1) / 10));
 
     if (!bucketsMap.has(idx)) {
       bucketsMap.set(idx, []);
@@ -31,7 +32,7 @@ export default async function SurveyPage() {
     .sort((a, b) => a[0] - b[0])
     .map(([idx, progs]) => {
       const start = idx * 10 + 1;
-      const end = (idx + 1) * 10 !== 40 ? (idx + 1) * 10 : 39;
+      const end = Math.min((idx + 1) * 10, 39);
 
       return {
         bucketIndex: idx,
@@ -41,14 +42,20 @@ export default async function SurveyPage() {
     });
 
   return (
-    <main className="flex h-dvh min-h-0 flex-col">
-      {/* ヘッダー */}
-      <div className="shrink-0">
+    <main className="min-h-dvh w-full">
+      {/* ================================================
+          ページヘッダー
+         ================================================ */}
+
+      <div className="w-full">
         <PageHeader title="第40回定期演奏会向けアンケート" />
       </div>
 
-      {/* アンケート */}
-      <div className="min-h-0 flex-1">
+      {/* ================================================
+          アンケート
+         ================================================ */}
+
+      <div className="w-full">
         <SurveyForm buckets={buckets} />
       </div>
     </main>

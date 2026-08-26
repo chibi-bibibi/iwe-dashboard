@@ -30,6 +30,7 @@ type Bucket = {
 
 const STORAGE_KEY = "iwe-survey-selections";
 const MAX_SELECT = 3;
+const FREE_TEXT_MAX_LENGTH = 400;
 
 const EMPTY_SELECTIONS: Record<number, string[]> = {};
 
@@ -192,6 +193,40 @@ function useSelections(): [
 }
 
 /* =========================================================
+ * 進捗グループ
+ *
+ * buckets の配列位置を基準にする。
+ *
+ * 0〜9   → 1-10回
+ * 10〜19 → 11-20回
+ * 20〜29 → 21-30回
+ * 30〜38 → 31-39回
+ * ======================================================= */
+
+const progressGroups = [
+  {
+    label: "1-10回",
+    startIndex: 0,
+    endIndex: 9,
+  },
+  {
+    label: "11-20回",
+    startIndex: 10,
+    endIndex: 19,
+  },
+  {
+    label: "21-30回",
+    startIndex: 20,
+    endIndex: 29,
+  },
+  {
+    label: "31-39回",
+    startIndex: 30,
+    endIndex: 38,
+  },
+];
+
+/* =========================================================
  * SurveyForm
  * ======================================================= */
 
@@ -223,10 +258,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
   const onToggleSelect = (bucketIndex: number, programId: string) => {
     const current = selections[bucketIndex] ?? [];
 
-    /*
-     * 3曲選択済みの場合は、
-     * 既に選んでいる曲の解除だけ可能。
-     */
     if (!current.includes(programId) && current.length >= MAX_SELECT) {
       return;
     }
@@ -264,9 +295,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
       return;
     }
 
-    /*
-     * すべてのグループが3曲選択されているか確認
-     */
     const incompleteBuckets = buckets.filter(
       (bucket) => (selections[bucket.bucketIndex] ?? []).length !== MAX_SELECT,
     );
@@ -278,19 +306,14 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
         `survey-bucket-${firstIncomplete.bucketIndex}`,
       );
 
-      if (element) {
-        element.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
+      element?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
 
       return;
     }
 
-    /*
-     * 選択された曲ID
-     */
     const programIds = Object.values(selections)
       .flat()
       .filter((id): id is string => typeof id === "string" && id.length > 0);
@@ -331,7 +354,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   /* =======================================================
    * 集計
-   * ===================================================== */
+   * ======================================================= */
 
   const totalSelected = useMemo(() => {
     return Object.values(selections).reduce(
@@ -350,7 +373,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   /* =======================================================
    * 検索
-   * ===================================================== */
+   * ======================================================= */
 
   const filteredBuckets = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -374,125 +397,102 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
   /* =======================================================
    * Render
-   * ===================================================== */
+   * ======================================================= */
 
   return (
     <>
       <form onSubmit={onSubmit} className="w-full">
         {/* ==================================================
             固定ヘッダー
-            タイトル・進捗・検索
            ================================================== */}
 
         <div
           className="
             sticky
             top-0
-            z-40
+            z-50
+            w-full
+            border-b
             bg-background/95
             px-2
-            pb-3
-            pt-2
+            py-2
+            shadow-sm
             backdrop-blur
           "
         >
-          <div
-            className="
-              rounded-xl
-              border
-              bg-background
-              p-4
-              shadow-sm
-            "
-          >
+          <div className="mx-auto w-full max-w-3xl">
             {/* タイトル */}
 
-            <div>
-              <h2 className="text-base font-semibold">
-                各グループから{MAX_SELECT}曲ずつ選んでください。
-              </h2>
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold">
+                  各グループから{MAX_SELECT}曲選択してください。
+                </h2>
+              </div>
             </div>
 
-            {/* 回答状況 */}
+            {/* 回数範囲 */}
 
-            <div
-              className="
-                mt-4
-                rounded-lg
-                bg-muted/40
-                px-3
-                py-2.5
-              "
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">回答状況</span>
+            <div className="mt-2 grid grid-cols-5 gap-1.5 relative">
+              {filteredBuckets.map((group) => {
+                const selected = selections[group.bucketIndex] ?? [];
+                const isCompleted = selected.length === MAX_SELECT;
+                const start = group.bucketIndex * 10 + 1;
+                const end = start + 9 !== 40 ? start + 9 : 39;
 
-                <span
-                  className={[
-                    "text-sm font-semibold",
-                    allComplete ? "text-primary" : "text-foreground",
-                  ].join(" ")}
-                >
-                  {completedBuckets} / {buckets.length} グループ
+                return (
+                  <div
+                    key={group.label}
+                    className={[
+                      "flex min-w-0 items-center justify-center",
+                      "gap-1 rounded-md px-1 py-1.5",
+                      "text-[10px] font-semibold",
+                      "transition-colors",
+
+                      //   isCompleted
+                      //     ? "border-primary bg-primary text-primary-foreground"
+                      //     : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/60",
+                    ].join(" ")}
+                  >
+                    {isCompleted && (
+                      <CheckIcon
+                        className="
+                          h-3
+                          w-3
+                          shrink-0
+                          stroke-[2.5]
+                        "
+                      />
+                    )}
+
+                    <span>
+                      {start}-{end}回
+                    </span>
+                  </div>
+                );
+              })}
+
+              <div className="absolute bottom-2 right-0 text-[10px] text-muted-foreground">
+                選択中{" "}
+                <span className="font-semibold text-foreground">
+                  {totalSelected}
                 </span>
-              </div>
-
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">選択した曲</span>
-
-                <span className="font-semibold">{totalSelected}曲</span>
-              </div>
-
-              {/* 進捗バー */}
-
-              <div
-                className="
-                  mt-2
-                  h-1.5
-                  w-full
-                  overflow-hidden
-                  rounded-full
-                  bg-muted
-                "
-              >
-                <div
-                  className="
-                    h-full
-                    rounded-full
-                    bg-primary
-                    transition-all
-                    duration-300
-                  "
-                  style={{
-                    width: `${
-                      buckets.length > 0
-                        ? (completedBuckets / buckets.length) * 100
-                        : 0
-                    }%`,
-                  }}
-                />
+                曲
               </div>
             </div>
 
-            {/* 検索 */}
+            {/* 選択数 + 検索 */}
 
-            <div className="mt-3">
-              <label
-                htmlFor="survey-search"
-                className="mb-1.5 block text-xs font-medium"
-              >
-                曲を検索
-              </label>
-
-              <div className="relative">
+            <div className="mt-2 flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
                 <MagnifyingGlassIcon
                   className="
                     pointer-events-none
                     absolute
-                    left-3
+                    left-2.5
                     top-1/2
-                    h-4
-                    w-4
+                    h-3.5
+                    w-3.5
                     -translate-y-1/2
                     text-muted-foreground
                   "
@@ -506,15 +506,14 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   placeholder="曲名・編曲者で検索"
                   className="
                     w-full
-                    rounded-lg
+                    rounded-md
                     border
                     bg-card
-                    py-2.5
-                    pl-9
-                    pr-9
-                    text-sm
+                    py-1.5
+                    pl-8
+                    pr-7
+                    text-xs
                     outline-none
-                    transition
                     focus:ring-2
                     focus:ring-primary/40
                   "
@@ -526,42 +525,37 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                     onClick={() => setSearch("")}
                     className="
                       absolute
-                      right-2.5
+                      right-1.5
                       top-1/2
                       -translate-y-1/2
                       rounded
                       p-1
                       text-muted-foreground
-                      hover:text-foreground
                     "
                     aria-label="検索をクリア"
                   >
-                    <XMarkIcon className="h-4 w-4" />
+                    <XMarkIcon className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
-            </div>
 
-            {/* クリア */}
-
-            {totalSelected > 0 && (
-              <div className="mt-3 text-right">
+              {totalSelected > 0 && (
                 <button
                   type="button"
                   onClick={clearAll}
                   className="
-                    text-xs
+                    shrink-0
+                    text-[10px]
                     text-muted-foreground
                     underline
                     decoration-dotted
                     underline-offset-2
-                    hover:text-foreground
                   "
                 >
-                  選択をすべてクリア
+                  クリア
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -569,7 +563,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             グループ一覧
            ================================================== */}
 
-        <div className="space-y-3 px-2 pt-1">
+        <div className="mx-auto w-full max-w-3xl space-y-3 px-2 pt-3">
           {filteredBuckets.map((bucket) => {
             const selected = selections[bucket.bucketIndex] ?? [];
 
@@ -580,6 +574,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 key={bucket.bucketIndex}
                 id={`survey-bucket-${bucket.bucketIndex}`}
                 className="
+                  scroll-mt-32.5
                   overflow-hidden
                   rounded-xl
                   border
@@ -592,6 +587,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 <div
                   className={[
                     "border-b px-3.5 py-3",
+
                     isCompleted
                       ? "border-primary/20 bg-primary/5"
                       : "bg-background",
@@ -600,35 +596,20 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        {isCompleted && (
-                          <CheckIcon
-                            className="
-                              h-5
-                              w-5
-                              shrink-0
-                              text-primary
-                            "
-                          />
-                        )}
-
                         <h3 className="truncate text-sm font-semibold">
                           {bucket.label}
                         </h3>
-                      </div>
 
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {bucket.programs.length}曲から
-                        {MAX_SELECT}曲選択
-                      </p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          対象：{bucket.programs.length}曲
+                        </p>
+                      </div>
                     </div>
 
                     <div
                       className={[
                         "shrink-0 rounded-full px-2.5 py-1",
                         "text-xs font-semibold",
-                        isCompleted
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground",
                       ].join(" ")}
                     >
                       {selected.length} / {MAX_SELECT}
@@ -712,7 +693,18 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                                   : "border-border bg-background text-muted-foreground",
                               ].join(" ")}
                             >
-                              {isSelected ? order : ""}
+                              {isSelected ? (
+                                <CheckIcon
+                                  className="
+                                  mt-0.5
+                                  h-3
+                                  w-3
+                                  shrink-0
+                                "
+                                />
+                              ) : (
+                                ""
+                              )}
                             </span>
 
                             {/* 曲情報 */}
@@ -726,7 +718,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                                 <div
                                   className="
                                     mt-1
-                                    wrap-break-word
+                                    wrap-break-words
                                     text-[11px]
                                     leading-relaxed
                                     text-muted-foreground
@@ -736,20 +728,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                                 </div>
                               )}
                             </div>
-
-                            {/* 選択状態 */}
-
-                            {isSelected && (
-                              <CheckIcon
-                                className="
-                                  mt-0.5
-                                  h-5
-                                  w-5
-                                  shrink-0
-                                  text-primary
-                                "
-                              />
-                            )}
                           </label>
                         );
                       })}
@@ -765,7 +743,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             自由記入欄
            ================================================== */}
 
-        <div className="px-2 pt-4">
+        <div className="mx-auto w-full max-w-3xl px-2 pt-4">
           <section
             className="
               rounded-xl
@@ -775,21 +753,18 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
               shadow-sm
             "
           >
-            <div>
-              <h2 className="text-sm font-semibold">自由記入欄</h2>
+            <h2 className="text-sm font-semibold">自由記入欄</h2>
 
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                曲についての感想や、選曲に関するご意見などがあれば
-                ご自由にお書きください。
-              </p>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              曲についての感想やご意見などがあればご自由にお書きください。
+            </p>
 
             <textarea
               value={freeText}
               onChange={(event) => setFreeText(event.target.value)}
               placeholder="ご意見・ご感想など"
-              rows={5}
-              maxLength={1000}
+              rows={3}
+              maxLength={FREE_TEXT_MAX_LENGTH}
               className="
                 mt-3
                 w-full
@@ -802,7 +777,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 text-sm
                 leading-relaxed
                 outline-none
-                transition
                 placeholder:text-muted-foreground
                 focus:ring-2
                 focus:ring-primary/40
@@ -810,7 +784,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             />
 
             <div className="mt-1 text-right text-[11px] text-muted-foreground">
-              {freeText.length} / 400文字
+              {freeText.length} / {FREE_TEXT_MAX_LENGTH}文字
             </div>
           </section>
         </div>
@@ -819,10 +793,11 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             送信前確認
            ================================================== */}
 
-        <div className="px-2 pt-4">
+        <div className="mx-auto w-full max-w-3xl px-2 pt-4">
           <div
             className={[
               "rounded-xl border p-4",
+
               allComplete
                 ? "border-primary/30 bg-primary/5"
                 : "border-border bg-muted/20",
@@ -834,6 +809,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   "mt-0.5 flex h-6 w-6 shrink-0",
                   "items-center justify-center",
                   "rounded-full",
+
                   allComplete
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground",
@@ -869,6 +845,9 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
         <div
           className="
+            mx-auto
+            w-full
+            max-w-3xl
             px-2
             pb-[max(1.5rem,env(safe-area-inset-bottom))]
             pt-3
@@ -933,8 +912,6 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
             "
           >
             <div className="text-center">
-              {/* アイコン */}
-
               <div
                 className={[
                   "mx-auto mb-3 flex h-12 w-12",
@@ -953,19 +930,13 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 )}
               </div>
 
-              {/* タイトル */}
-
               <h2 className="text-base font-semibold">
                 {submitResult.success ? "送信完了" : "送信エラー"}
               </h2>
 
-              {/* メッセージ */}
-
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {submitResult.message}
               </p>
-
-              {/* ホームへ戻る */}
 
               <button
                 type="button"

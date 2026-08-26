@@ -472,7 +472,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 );
               })}
 
-              <div className="absolute bottom-2 right-0 text-[10px] text-muted-foreground">
+              <div className="absolute bottom-1.5 right-0 text-[10px] text-muted-foreground">
                 選択中{" "}
                 <span className="font-semibold text-foreground">
                   {totalSelected}
@@ -483,7 +483,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
             {/* 選択数 + 検索 */}
 
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 grid-cols-5">
               <div className="relative min-w-0 flex-1">
                 <MagnifyingGlassIcon
                   className="
@@ -539,11 +539,10 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                 )}
               </div>
 
-              {totalSelected > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="
+              <button
+                type="button"
+                onClick={clearAll}
+                className="
                     shrink-0
                     text-[10px]
                     text-muted-foreground
@@ -551,10 +550,10 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                     decoration-dotted
                     underline-offset-2
                   "
-                >
-                  クリア
-                </button>
-              )}
+                disabled={totalSelected === 0}
+              >
+                選択をリセット
+              </button>
             </div>
           </div>
         </div>
@@ -755,14 +754,10 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
           >
             <h2 className="text-sm font-semibold">自由記入欄</h2>
 
-            <p className="mt-1 text-xs text-muted-foreground">
-              曲についての感想やご意見などがあればご自由にお書きください。
-            </p>
-
             <textarea
               value={freeText}
               onChange={(event) => setFreeText(event.target.value)}
-              placeholder="ご意見・ご感想など"
+              placeholder=""
               rows={3}
               maxLength={FREE_TEXT_MAX_LENGTH}
               className="

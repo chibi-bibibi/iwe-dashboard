@@ -81,3 +81,36 @@ async function createSurveyResponse(
 export async function submitSurvey(programIds: string[], freeText: string) {
   return createSurveyResponse(programIds, freeText);
 }
+
+export type SurveyResult = {
+  program_id: string;
+  concert_count: number | null;
+  part: string | null;
+  title: string | null;
+  arranger: string | null;
+  votes: number;
+};
+
+export async function getSurveyResults(): Promise<SurveyResult[]> {
+  try {
+    const results = await sql<SurveyResult[]>`
+      SELECT
+        p.id::text AS program_id,
+        rc.count AS concert_count,
+        p.part,
+        p.title,
+        p.arranger,
+        COUNT(DISTINCT s.response_id)::int AS votes
+      FROM iwe.survey_selections s
+      INNER JOIN iwe.regular_concert_program p ON p.id = s.program_id
+      LEFT JOIN iwe.regular_concert rc ON rc.id = p.regular_concert_id
+      GROUP BY p.id, p."order", rc.count, p.part, p.title, p.arranger
+      ORDER BY votes DESC, rc.count ASC NULLS LAST, p."order" ASC
+    `;
+
+    return results;
+  } catch (error) {
+    console.error("getSurveyResults error:", error);
+    return [];
+  }
+}

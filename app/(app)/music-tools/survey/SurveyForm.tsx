@@ -425,7 +425,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
 
             <div className="mb-4 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">
+                <h2 className="wrap-break-word text-sm font-semibold">
                   各グループから{MAX_SELECT}曲選択してください。
                 </h2>
               </div>
@@ -592,7 +592,7 @@ export default function SurveyForm({ buckets }: { buckets: Bucket[] }) {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-baseline gap-2">
-                        <h3 className="truncate text-sm font-semibold">
+                        <h3 className="wrap-break-word text-sm font-semibold">
                           {bucket.label}
                         </h3>
 

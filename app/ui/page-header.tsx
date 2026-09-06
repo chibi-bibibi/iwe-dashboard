@@ -22,7 +22,7 @@ export default function PageHeader({
         className ?? "",
       ].join(" ")}
     >
-      <div className="flex h-8 items-center gap-1.5">
+      <div className="flex min-h-8 items-start gap-1.5">
         <button
           type="button"
           onClick={() => router.back()}
@@ -37,7 +37,7 @@ export default function PageHeader({
           <ChevronRightIcon className="h-5 w-5 rotate-180" />
         </button>
 
-        <h1 className="min-w-0 truncate text-lg font-semibold md:text-2xl">
+        <h1 className="min-w-0 flex-1 whitespace-normal wrap-break-word pt-1 text-lg font-semibold leading-6 md:text-2xl md:leading-8">
           {title}
         </h1>
       </div>

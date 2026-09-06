@@ -28,6 +28,12 @@ export default function Home() {
           >
             アンケート
           </Link>
+          <Link
+            href="/music-tools/survey/results"
+            className="rounded-md px-4 py-2 border"
+          >
+            アンケート結果
+          </Link>
         </div>
       </div>
     </main>
